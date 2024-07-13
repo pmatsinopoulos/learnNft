@@ -10,14 +10,16 @@ describe("OrangeToken", function () {
 
   async function deployOrangeTokenFixture() {
     const OrangeToken = await hre.ethers.getContractFactory("OrangeToken");
+    const [contractOwner, otherAccount] = await hre.ethers.getSigners();
     const orangeToken = await OrangeToken.deploy(
       tokenName,
       tokenSymbol,
       tokenDecimals,
       tokenTotalSupply
     );
+    await orangeToken.waitForDeployment();
 
-    return { orangeToken };
+    return { orangeToken, contractOwner, otherAccount };
   }
 
   describe("#name()", function () {
@@ -74,6 +76,78 @@ describe("OrangeToken", function () {
       const balanceOfAnotherAddress = await orangeToken.balanceOf(anAddress);
 
       expect(balanceOfAnotherAddress).to.equal(value);
+    });
+  });
+
+  describe("#transfer()", function () {
+    it("transfers _value amount of tokens to address _to", async function () {
+      const { orangeToken } = await loadFixture(deployOrangeTokenFixture);
+
+      // setup
+      const aWallet = hre.ethers.Wallet.createRandom();
+      const anAddress = aWallet.address;
+      const value = 100;
+
+      // fire
+      const transferResult = await orangeToken.transfer(anAddress, value);
+
+      // test
+      const balance = await orangeToken.balanceOf(anAddress);
+      expect(balance).to.equal(value);
+    });
+
+    it("emits the Transfer event", async function () {
+      const { orangeToken, contractOwner } = await loadFixture(
+        deployOrangeTokenFixture
+      );
+
+      // setup
+      const aWallet = hre.ethers.Wallet.createRandom();
+      const anAddress = aWallet.address;
+      const value = 100;
+
+      // fire
+      await expect(orangeToken.transfer(anAddress, value))
+        .to.emit(orangeToken, "Transfer")
+        .withArgs(contractOwner, anAddress, value);
+    });
+
+    it("reverts when caller’s account balance does not have enough tokens to spend", async function () {
+      const { orangeToken, otherAccount } = await loadFixture(
+        deployOrangeTokenFixture
+      );
+
+      // setup
+      const aWallet = hre.ethers.Wallet.createRandom();
+      const anAddress = aWallet.address;
+      const value = 100;
+
+      // fire
+      await expect(
+        orangeToken.connect(otherAccount).transfer(anAddress, value)
+      ).to.be.revertedWith("caller does not have enough tokens to transfer");
+    });
+
+    context("when transfer value is 0", function () {
+      it("treats as normal transfer and fires the Transfer event", async function () {
+        const { orangeToken, contractOwner } = await loadFixture(
+          deployOrangeTokenFixture
+        );
+
+        // setup
+        const aWallet = hre.ethers.Wallet.createRandom();
+        const anAddress = aWallet.address;
+        const value = 0;
+
+        // fire
+        await expect(orangeToken.transfer(anAddress, value))
+          .to.emit(orangeToken, "Transfer")
+          .withArgs(contractOwner, anAddress, value);
+
+        // test
+        const balance = await orangeToken.balanceOf(anAddress);
+        expect(balance).to.equal(value);
+      });
     });
   });
 });
