@@ -11,6 +11,9 @@ contract OrangeToken {
 
     mapping(address => uint) balances;
 
+    // an address approves other address to transfer a maximum value
+    mapping(address => mapping(address => uint256)) approvals;
+
     event Transfer(address indexed from, address indexed to, uint256 value);
 
     constructor(
@@ -40,7 +43,33 @@ contract OrangeToken {
         success = true;
     }
 
+    function transferFrom(
+        address _from,
+        address _to,
+        uint256 _value
+    ) public returns (bool success) {
+        require(
+            approvals[_from][msg.sender] >= _value,
+            "sender is not allowed to transfer this amount on behalf of _from"
+        );
+        require(balances[_from] >= _value, "not enough balance to transfer");
+        balances[_from] -= _value;
+        balances[_to] += _value;
+
+        emit Transfer(_from, _to, _value);
+
+        success = true;
+    }
+
     function balanceOf(address _owner) public view returns (uint256 balance) {
         balance = balances[_owner];
+    }
+
+    function approve(
+        address _spender,
+        uint256 _value
+    ) public returns (bool success) {
+        approvals[msg.sender][_spender] = _value;
+        success = true;
     }
 }

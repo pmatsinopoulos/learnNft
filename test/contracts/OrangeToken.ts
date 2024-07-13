@@ -150,4 +150,174 @@ describe("OrangeToken", function () {
       });
     });
   });
+
+  describe("#transferFrom()", function () {
+    it("transfers _value amount of tokens from address _from to address _to", async function () {
+      const {
+        orangeToken,
+        contractOwner,
+        otherAccount: fromAccount,
+      } = await loadFixture(deployOrangeTokenFixture);
+
+      // setup
+      const fromAddress = fromAccount.address;
+
+      const toWallet = hre.ethers.Wallet.createRandom();
+      const toAddress = toWallet.address;
+
+      const value = 100;
+
+      const fromAddressBalanceBefore = 1_000;
+      await orangeToken.transfer(fromAddress, fromAddressBalanceBefore);
+
+      const toAddressBalanceBefore = 2_000;
+      await orangeToken.transfer(toAddress, toAddressBalanceBefore);
+
+      await orangeToken.connect(fromAccount).approve(contractOwner, value);
+
+      // fire
+      await orangeToken.transferFrom(fromAddress, toAddress, value);
+
+      const fromAddressBalanceAfter = await orangeToken.balanceOf(fromAddress);
+      expect(fromAddressBalanceAfter).to.equal(
+        fromAddressBalanceBefore - value
+      );
+
+      const toAddressBalanceAfter = await orangeToken.balanceOf(toAddress);
+      expect(toAddressBalanceAfter).to.equal(toAddressBalanceBefore + value);
+    });
+
+    it("fires the Transfer event", async function () {
+      const {
+        orangeToken,
+        contractOwner,
+        otherAccount: fromAccount,
+      } = await loadFixture(deployOrangeTokenFixture);
+
+      // setup
+      const fromAddress = fromAccount.address;
+
+      const toWallet = hre.ethers.Wallet.createRandom();
+      const toAddress = toWallet.address;
+
+      const value = 100;
+
+      const fromAddressBalanceBefore = 1_000;
+      await orangeToken.transfer(fromAddress, fromAddressBalanceBefore);
+
+      const toAddressBalanceBefore = 2_000;
+      await orangeToken.transfer(toAddress, toAddressBalanceBefore);
+
+      await orangeToken.connect(fromAccount).approve(contractOwner, value);
+
+      // fire
+      await expect(orangeToken.transferFrom(fromAddress, toAddress, value))
+        .to.emit(orangeToken, "Transfer")
+        .withArgs(fromAddress, toAddress, value);
+    });
+
+    context("when _from address does not have enough balance", function () {
+      it("reverts", async function () {
+        const {
+          orangeToken,
+          contractOwner,
+          otherAccount: fromAccount,
+        } = await loadFixture(deployOrangeTokenFixture);
+
+        // setup
+        const fromAddress = fromAccount.address;
+
+        const toWallet = hre.ethers.Wallet.createRandom();
+        const toAddress = toWallet.address;
+
+        const value = 100;
+
+        const fromAddressBalanceBefore = value - 1;
+        await orangeToken.transfer(fromAddress, fromAddressBalanceBefore);
+
+        const toAddressBalanceBefore = 2_000;
+        await orangeToken.transfer(toAddress, toAddressBalanceBefore);
+
+        await orangeToken.connect(fromAccount).approve(contractOwner, value);
+
+        // fire
+        await expect(
+          orangeToken.transferFrom(fromAddress, toAddress, value)
+        ).to.revertedWith("not enough balance to transfer");
+      });
+    });
+
+    context(
+      "when sender does not have allowance from _from to execute the transfer",
+      function () {
+        context("when allowance is positive but less than value", function () {
+          it("reverts", async function () {
+            const {
+              orangeToken,
+              contractOwner,
+              otherAccount: fromAccount,
+            } = await loadFixture(deployOrangeTokenFixture);
+
+            // setup
+            const fromAddress = fromAccount.address;
+
+            const toWallet = hre.ethers.Wallet.createRandom();
+            const toAddress = toWallet.address;
+
+            const value = 100;
+
+            const fromAddressBalanceBefore = 1_000;
+            await orangeToken.transfer(fromAddress, fromAddressBalanceBefore);
+
+            const toAddressBalanceBefore = 2_000;
+            await orangeToken.transfer(toAddress, toAddressBalanceBefore);
+
+            await orangeToken
+              .connect(fromAccount)
+              .approve(contractOwner, value - 1);
+
+            // fire
+            await expect(
+              orangeToken.transferFrom(fromAddress, toAddress, value)
+            ).to.revertedWith(
+              "sender is not allowed to transfer this amount on behalf of _from"
+            );
+          });
+        });
+
+        context("when allowance is 0", function () {
+          it("reverts", async function () {
+            const {
+              orangeToken,
+              contractOwner,
+              otherAccount: fromAccount,
+            } = await loadFixture(deployOrangeTokenFixture);
+
+            // setup
+            const fromAddress = fromAccount.address;
+
+            const toWallet = hre.ethers.Wallet.createRandom();
+            const toAddress = toWallet.address;
+
+            const value = 100;
+
+            const fromAddressBalanceBefore = 1_000;
+            await orangeToken.transfer(fromAddress, fromAddressBalanceBefore);
+
+            const toAddressBalanceBefore = 2_000;
+            await orangeToken.transfer(toAddress, toAddressBalanceBefore);
+
+            await orangeToken.connect(fromAccount).approve(contractOwner, 0);
+
+            // fire
+            await expect(
+              orangeToken.transferFrom(fromAddress, toAddress, value)
+            ).to.revertedWith(
+              "sender is not allowed to transfer this amount on behalf of _from"
+            );
+          });
+        });
+      }
+    );
+  });
 });
