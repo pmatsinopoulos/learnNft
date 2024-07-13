@@ -6,13 +6,15 @@ describe("OrangeToken", function () {
   const tokenName = "Orange";
   const tokenSymbol = "ORG";
   const tokenDecimals = 8;
+  const tokenTotalSupply = 10_000_000;
 
   async function deployOrangeTokenFixture() {
     const OrangeToken = await hre.ethers.getContractFactory("OrangeToken");
     const orangeToken = await OrangeToken.deploy(
       tokenName,
       tokenSymbol,
-      tokenDecimals
+      tokenDecimals,
+      tokenTotalSupply
     );
 
     return { orangeToken };
@@ -45,6 +47,16 @@ describe("OrangeToken", function () {
       const decimals = await orangeToken.decimals();
 
       expect(decimals).to.equal(tokenDecimals);
+    });
+  });
+
+  describe("#totalSupply()", function () {
+    it("returns the total supply of tokens", async function () {
+      const { orangeToken } = await loadFixture(deployOrangeTokenFixture);
+
+      const totalSupply = await orangeToken.totalSupply();
+
+      expect(totalSupply).to.equal(tokenTotalSupply);
     });
   });
 });
