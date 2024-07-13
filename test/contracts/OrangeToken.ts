@@ -59,4 +59,21 @@ describe("OrangeToken", function () {
       expect(totalSupply).to.equal(tokenTotalSupply);
     });
   });
+
+  describe("#balanceOf()", function () {
+    it("returns the account balance of another account with address", async function () {
+      const { orangeToken } = await loadFixture(deployOrangeTokenFixture);
+
+      // setup
+      const aWallet = hre.ethers.Wallet.createRandom();
+      const anAddress = aWallet.address;
+      const value = 100;
+      await orangeToken.transfer(anAddress, value);
+
+      // fire
+      const balanceOfAnotherAddress = await orangeToken.balanceOf(anAddress);
+
+      expect(balanceOfAnotherAddress).to.equal(value);
+    });
+  });
 });
